@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Machine Learning System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Machine Learning System</h1>
+    <form id="ml-form">
+        <label for="classifier">Select Classifier:</label>
+        <select id="classifier">
+            <option value="KNN">KNN</option>
+            <option value="SVM">SVM</option>
+            <option value="MLP">MLP</option>
+            <option value="DT">Decision Tree</option>
+            <option value="RF">Random Forest</option>
+        </select>
+        <br><br>
+        <div id="parameters">
+            <!-- Os campos de entrada serão preenchidos dinamicamente com base no classificador selecionado -->
+        </div>
+        <br><br>
+        <button type="submit">Train and Evaluate</button>
+    </form>
+
+    <div id="results">
+        <!-- Os resultados serão exibidos aqui -->
+    </div>
+
+    <div id="confusion">
+        <!-- A imagem da matriz de confusão será exibida aqui -->
+    </div>
+    <!--  Aqui exibimos um formulário onde o usuário pode selecionar um classificador e inserir parâmetros específicos
+     para cada algoritmo. Quando o formulário é submetido, o JavaScript coleta os parâmetros inseridos,
+     envia-os para o servidor via POST request e exibe as métricas de desempenho e a matriz de confusão retornadas pelo servidor.
+     A construção da lógica em si do código é em JS-->
+    <script>
+        document.getElementById('classifier').addEventListener('change', function() {
+            var selectedClassifier = this.value;
+            var parametersDiv = document.getElementById('parameters');
+            parametersDiv.innerHTML = "";
+
+            if (selectedClassifier === 'KNN') {
+                parametersDiv.innerHTML += '<label for="n_neighbors">Number of Neighbors:</label>';
+                parametersDiv.innerHTML += '<input type="number" id="n_neighbors" min="1" required>';
+            } else if (selectedClassifier === 'SVM') {
+                parametersDiv.innerHTML += '<label for="C">C Value:</label>';
+                parametersDiv.innerHTML += '<input type="number" id="C" min="0.1" required>';
+                parametersDiv.innerHTML += '<label for="kernel">Kernel:</label>';
+                parametersDiv.innerHTML += '<input type="text" id="kernel" required>';
+            } else if (selectedClassifier === 'MLP') {
+                parametersDiv.innerHTML += '<label for="hidden_layer_sizes">Hidden Layer Sizes:</label>';
+                parametersDiv.innerHTML += '<input type="text" id="hidden_layer_sizes" required>';
+            } else if (selectedClassifier === 'DT') {
+                parametersDiv.innerHTML += '<label for="max_depth">Max Depth:</label>';
+                parametersDiv.innerHTML += '<input type="number" id="max_depth" min="1" required>';
+            } else if (selectedClassifier === 'RF') {
+                parametersDiv.innerHTML += '<label for="n_estimators">Number of Estimators:</label>';
+                parametersDiv.innerHTML += '<input type="number" id="n_estimators" min="1" required>';
+            }
+        });
+
+        document.getElementById('ml-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            let classifier = document.getElementById('classifier').value;
+            let parameters = {};
+
+            if (classifier === 'KNN') {
+                parameters['n_neighbors'] = parseInt(document.getElementById('n_neighbors').value);
+            } else if (classifier === 'SVM') {
+                parameters['C'] = parseFloat(document.getElementById('C').value);
+                parameters['kernel'] = document.getElementById('kernel').value;
+            } else if (classifier === 'MLP') {
+                parameters['hidden_layer_sizes'] = document.getElementById('hidden_layer_sizes').value;
+            } else if (classifier === 'DT') {
+                parameters['max_depth'] = parseInt(document.getElementById('max_depth').value);
+            } else if (classifier === 'RF') {
+                parameters['n_estimators'] = parseInt(document.getElementById('n_estimators').value);
+            }
+
+            fetch('/train', {
+                method: 'POST',
+                body: JSON.stringify({
+                    classifier: classifier,
+                    parameters: parameters
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('results').innerHTML = `
+                    <h2>Results</h2>
+                    <p>Accuracy: ${data.accuracy}</p>
+                    <p>Precision: ${data.precision}</p>
+                    <p>Recall: ${data.recall}</p>
+                    <p>F1 Score: ${data.f1_score}</p>
+                `;
+
+                document.getElementById('confusion').innerHTML = `
+                    <h2>Confusion Matrix</h2>
+                    <img src="data:image/png;base64, ${data.confusion_matrix}" alt="Confusion Matrix">
+                `;
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
